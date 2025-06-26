@@ -5,7 +5,22 @@ class Scene1 extends Phaser.Scene {
     }
 
     init() {
+        this.playerId = null;
+        this.x = null;
+        this.y = null;
+        this.ws = new WebSocket("ws://localhost:9090");
+        this.ws.onmessage = (message) => {
+            const response = JSON.parse(message.data);
 
+            if (response.method === "connect") {
+                this.playerId = response.playerId;
+                this.x = response.x;
+                this.y = response.y;
+                console.log("Player id configurado" + this.playerId);
+                console.log("Player x" + this.x);
+                console.log("Player y" + this.y);
+            }
+        }
     }
 
     preload() {
@@ -15,12 +30,65 @@ class Scene1 extends Phaser.Scene {
 
     create() {
         this.add.image(0, 0, 'bg').setOrigin(0, 0);
-        this.add.sprite(200, 200, 'character');
 
-        this.ws = new WebSocket("ws://localhost:9090");
+        this.anims.create({key: 'idle', frames: this.anims.generateFrameNames('character', {start: 0, end: 0})});
+        this.anims.create({key: 'down', frames: this.anims.generateFrameNames('character', {start: 0, end: 3})});
+        this.anims.create({key: 'left', frames: this.anims.generateFrameNames('character', {start: 4, end: 7})});
+        this.anims.create({key: 'right', frames: this.anims.generateFrameNames('character', {start: 8, end: 11})});
+        this.anims.create({key: 'up', frames: this.anims.generateFrameNames('character', {start: 12, end: 15})});
+        
+
+        this.createPlayer();
+        this.physics.add.existing(this.player);
+        this.otherPlayers = this.physics.add.group();
+        const payload = {
+            "method": "currentPlayers"
+        }
+        this.ws.send(JSON.stringify(payload));
+        this.ws.onmessage = (message) => {
+            const response = JSON.parse(message.data);
+
+            if (response.method === "currentPlayers") {
+                const playerId = response.playerId;
+                const x = response.x;
+                const y = response.y;
+                this.addOtherPlayers({ x, y, playerId })
+            }
+        }
+
+        this.cursors = this.input.keyboard?.createCursorKeys();
     }
 
     update() {
+        if (this.cursors?.right.isDown) {
+            this.player.anims.play('right', true);
+            this.player.body.setVelocityX(300);
+        }
+        else if (this.cursors.left.isDown) {
+            this.player.anims.play('left', true);
+            this.player.body.setVelocityX(-300);
+        }
+        else if (this.cursors.up.isDown) {
+            this.player.anims.play('up', true);
+            this.player.body.setVelocityY(-300);
+        }
+        else if (this.cursors.down.isDown) {
+            this.player.anims.play('up', true);
+            this.player.body.setVelocityY(300);
+        }
+        else {
+            this.player.body.setVelocity(0);
+        }
+    }
 
+    createPlayer() {
+        this.player = this.add.sprite(this.x, this.y, 'character');
+    }
+
+    addOtherPlayers(playerInfo) {
+        const otherPlayer = this.add.sprite(playerInfo.x, playerInfo.y, "character");
+        otherPlayer.setTint(Math.random() * 0xffffff);
+        otherPlayer.playerId = playerInfo.playerId;
+        this.otherPlayers.add(otherPlayer);
     }
 }
