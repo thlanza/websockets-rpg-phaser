@@ -54,6 +54,14 @@ class Scene1 extends Phaser.Scene {
                 const y = response.y;
                 this.addOtherPlayers({ x, y, playerId })
             }
+
+            if (response.method === "newPlayer") {
+                this.addOtherPlayers({x: response.x, y: response.y, playerId: response.playerId})
+            }
+
+            if (response.method === "disconnect") {
+                this.removePlayer(response.playerId);
+            }
         }
 
         this.cursors = this.input.keyboard?.createCursorKeys();
@@ -81,6 +89,7 @@ class Scene1 extends Phaser.Scene {
         }
     }
 
+
     createPlayer() {
         this.player = this.add.sprite(this.x, this.y, 'character');
     }
@@ -90,5 +99,11 @@ class Scene1 extends Phaser.Scene {
         otherPlayer.setTint(Math.random() * 0xffffff);
         otherPlayer.playerId = playerInfo.playerId;
         this.otherPlayers.add(otherPlayer);
+    }
+
+    removePlayer(playerId) {
+        this.otherPlayers.getChildren().forEach(player => {
+            if (player.playerId === playerId) player.destroy();
+        })
     }
 }

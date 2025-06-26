@@ -28,7 +28,18 @@ const wsServer = new websocketServer({
 wsServer.on("request", request => {
     const connection = request.accept(null, request.origin);
 
-    connection.on("close", () => console.log("Uma conexão fechou."));
+    connection.on("close", () => {
+        players.forEach(player => {
+            if (player.playerId !== playerId) {
+                const payload = {
+                    "method": "disconnect",
+                    "playerId": playerId
+                }
+                player.connection.send(JSON.stringify(payload));
+            }
+        })
+        players = players.filter(player => player.playerId !== playerId);
+    });
 
     connection.on("message", message => {
         const result = JSON.parse(message.utf8Data);
@@ -67,6 +78,16 @@ wsServer.on("request", request => {
     };
 
     connection.send(JSON.stringify(payload));
+
+    players.forEach(player => {
+        const payload = {
+            "method": "newPlayer",
+            "playerId": playerId,
+            "x": x,
+            "y": y
+        };
+        player.connection.send(JSON.stringify(payload));
+    })
 
     players.push(playerInfo);
 });
